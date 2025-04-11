@@ -41,10 +41,11 @@ nltk.download('wordnet')
 search-engine/
 ├── searchEngine.py    # Core engine class with BM25 and proximity logic
 ├── driver.py          # Interactive driver script for querying and tuning
-├── b_index.json       # Body index (JSON format)
-├── id_doc_len.csv     # Document lengths (CSV: id,length)
-├── id_link.csv        # Document IDs to URLs (CSV: id,link)
-└── doc_norms.csv      # Normalized document lengths (CSV: id,norm)
+├── Indexes
+    ├── b_index.json       # Body index (JSON format)
+    ├── id_doc_len.csv     # Document lengths (CSV: id,length)
+    ├── id_link.csv        # Document IDs to URLs (CSV: id,link)
+    └── doc_norms.csv      # Normalized document lengths (CSV: id,norm)
 ```
 
 ## Index File Formats
