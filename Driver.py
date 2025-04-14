@@ -1,5 +1,7 @@
 import argparse
 from searchEngine import engine
+from flask import Flask, request, jsonify
+
 
 def run_query(search_engine, query, k=10, debug=False):
     """Run a single query and display results."""
@@ -94,7 +96,7 @@ def tune_parameters(search_engine, query, k=10):
         
         # Run query with updated parameter
         run_query(search_engine, query, k=k, debug=True)
-
+'''
 def interactive_mode(search_engine, k=10, debug=False):
     """Run queries one after another interactively with pagination."""
     
@@ -125,26 +127,32 @@ def interactive_mode(search_engine, k=10, debug=False):
         else:
             run_query(search_engine, query, k=k, debug=debug)
             last_query = query  # Store the last query for 'next'
-
-def main():
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Search Engine Driver (Single Engine Instance)")
-    parser.add_argument('--k', type=int, default=10,
-                        help="Number of results to return (default: 10)")
-    parser.add_argument('--debug', action='store_true',
-                        help="Enable debug output (terms, index hits, doc_ids)")
-    args = parser.parse_args()
-    
+'''
+if __name__ == '__main__':
     # Initialize engine once
-    try:
-        search_engine = engine()
-        print("Engine initialized successfully.")
-    except Exception as e:
-        print(f"Failed to initialize engine: {e}")
-        return
-    
-    # Start interactive mode
-    interactive_mode(search_engine, k=args.k, debug=args.debug)
+    search_engine = engine()
+    # Run interactive mode
+    interactive_mode(search_engine)
+'''
+app = Flask(__name__)
 
-if __name__ == "__main__":
-    main()
+# Initialize engine (outside the request context)
+search_engine = engine()
+
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('query')
+    if not query:
+        return jsonify({'error': 'Missing query parameter'}), 400
+    
+    # You can adjust 'k' as needed or pass it as a parameter
+    search_engine.search(query)
+    results = search_engine.retrieve_new_res(k=10)  
+
+    # Format the results as a list of dictionaries for better JSON serialization
+    formatted_results = [{'link': link, 'score': score} for link, score in results]
+    
+    return jsonify(formatted_results)
+
+if __name__ == '__main__':
+    app.run(debug=True)
