@@ -1,32 +1,30 @@
 import argparse
 from searchEngine import engine
 
-def run_query(search_engine, query, k=10, debug=False):
+def run_query(search_engine, query, use_pagerank=False, k=10, debug=False):
     """Run a single query and display results."""
     print(f"Running query: '{query}'")
-    search_engine.search(query)
+    search_engine.search(query, use_pagerank=use_pagerank)
     results = search_engine.retrieve_new_res(k=k)
     
     if debug:
         terms = search_engine._process_query(query)
         print(f"Processed terms: {terms}")
         print("Terms in b_index:", [t for t in terms if t in search_engine.b_index])
+        print("Terms in h_index:", [t for t in terms if t in search_engine.h_index])
+        print("Terms in t_index:", [t for t in terms if t in search_engine.t_index])
         print(f"Scored documents: {len(search_engine.results)}")
-        print("Sample doc_ids:", [doc_id for _, doc_id in search_engine.results[:5]])
+        print("Sample doc_ids:", [doc_id for _, doc_id in list(search_engine.results.items())[:5]])
     
     if not results:
         print("No results found.")
         if debug:
-            print("Check: Are query terms in b_index? Is id_link correctly mapped?")
+            print("Check: Are query terms in indexes? Is id_link correctly mapped?")
     else:
         print(f"Top {k} results:")
         for i, (link, score) in enumerate(results, 1):
             print(f"{i}. {link} (Score: {score:.3f})")
-
-def check_indexes(search_engine):
-    """Run engine.check() to inspect indexes."""
-    print("Checking indexes...")
-    search_engine.check()
+    return results
 
 def get_next_results(search_engine, k=10):
     """Retrieve the next k results from the current results heap."""
@@ -39,39 +37,57 @@ def get_next_results(search_engine, k=10):
             print(f"{i}. {link} (Score: {score:.3f})")
     return results
 
-def tune_parameters(search_engine, query, k=10):
+def check_indexes(search_engine):
+    """Run engine.check() to inspect indexes."""
+    print("Checking indexes...")
+    search_engine.check()
+
+def tune_parameters(search_engine, query, k=10, use_pagerank=False):
     """Interactively tune parameters for a given query."""
     param_options = {
         '1': ('k1', 'BM25 term frequency saturation'),
         '2': ('b', 'BM25 length normalization'),
-        '3': ('proximity_weight', 'Weight of proximity boost'),
-        '4': ('proximity_scale', 'Proximity distance sensitivity'),
-        '5': ('b_contri', 'Body zone weight'),
-        '6': ('h_contri', 'Header zone weight'),
-        '7': ('t_contri', 'Title zone weight'),
+        '3': ('proximity_weight_b', 'Body proximity boost weight'),
+        '4': ('proximity_weight_h', 'Header proximity boost weight'),
+        '5': ('proximity_weight_t', 'Title proximity boost weight'),
+        '6': ('proximity_scale', 'Proximity distance sensitivity'),
+        '7': ('b_contri', 'Body zone weight'),
+        '8': ('h_contri', 'Header zone weight'),
+        '9': ('t_contri', 'Title zone weight'),
+        '10': ('bm25_weight', 'BM25 score weight'),
+        '11': ('pagerank_weight', 'PageRank score weight'),
     }
     
     while True:
-        # Display current parameters
         print(f"\nCurrent parameters:")
         print(f"  k1: {search_engine.k1}")
         print(f"  b: {search_engine.b}")
-        print(f"  proximity_weight: {search_engine.proximity_weight}")
+        print(f"  proximity_weight_b: {search_engine.proximity_weight_b}")
+        print(f"  proximity_weight_h: {search_engine.proximity_weight_h}")
+        print(f"  proximity_weight_t: {search_engine.proximity_weight_t}")
         print(f"  proximity_scale: {search_engine.proximity_scale}")
         print(f"  b_contri: {search_engine.b_contri}")
         print(f"  h_contri: {search_engine.h_contri}")
         print(f"  t_contri: {search_engine.t_contri}")
+        print(f"  bm25_weight: {search_engine.bm25_weight}")
+        print(f"  pagerank_weight: {search_engine.pagerank_weight}")
+        print(f"  Using PageRank: {use_pagerank}")
         
-        # Show tuning options
         print("\nSelect parameter to tune (or 'exit' to return):")
         for key, (param, desc) in param_options.items():
             print(f"  {key}. {param} - {desc}")
+        print("  12. Toggle PageRank usage")
         
         choice = input("Enter choice: ").strip().lower()
         
         if choice == 'exit':
             print("Returning to main menu...")
             break
+        elif choice == '12':
+            use_pagerank = not use_pagerank
+            print(f"PageRank usage {'enabled' if use_pagerank else 'disabled'}")
+            run_query(search_engine, query, use_pagerank=use_pagerank, k=k, debug=True)
+            continue
         elif choice not in param_options:
             print("Invalid choice, try again.")
             continue
@@ -80,10 +96,9 @@ def tune_parameters(search_engine, query, k=10):
         current_value = getattr(search_engine, param_name)
         print(f"\nTuning {param_name} (current value: {current_value})")
         
-        # Get new value
         try:
             new_value = float(input(f"Enter new value for {param_name}: "))
-            if new_value < 0 and param_name not in ['proximity_weight']:  # Allow negative proximity_weight if needed
+            if new_value < 0 and param_name not in ['proximity_weight_b', 'proximity_weight_h', 'proximity_weight_t']:
                 print("Value must be non-negative.")
                 continue
             setattr(search_engine, param_name, new_value)
@@ -92,50 +107,69 @@ def tune_parameters(search_engine, query, k=10):
             print("Invalid number, try again.")
             continue
         
-        # Run query with updated parameter
-        run_query(search_engine, query, k=k, debug=True)
+        run_query(search_engine, query, use_pagerank=use_pagerank, k=k, debug=True)
 
 def interactive_mode(search_engine, k=10, debug=False):
     """Run queries one after another interactively with pagination."""
+    print("Interactive Search Engine (type 'exit' to quit, 'check' to inspect indexes, 'tune' to tune parameters, 'next' for next results)")
+    print("Type 'pagerank:on' or 'pagerank:off' to enable/disable PageRank for queries")
     
-    print("Interactive Search Engine (type 'exit' to quit, 'check' to inspect indexes, 'tune' to tune parameters, 'next' for more results)")
     last_query = None
+    use_pagerank = False
     
     while True:
-        query = input("\nEnter query: ").strip().lower()
-        if query == 'exit':
+        query = input("\nEnter query: ").strip()
+        
+        if not query:
+            print("Empty query, please try again.")
+            continue
+            
+        if query.lower() == 'exit':
             print("Exiting...")
             break
-        elif query == 'check':
+        elif query.lower() == 'check':
             check_indexes(search_engine)
-        elif query == 'tune':
-            tune_query = input("Enter query to tune: ").strip()
+            continue
+        elif query.lower().startswith('tune'):
+            tune_query = last_query
+            if query.lower() != 'tune' and len(query) > 5:
+                tune_query = query[5:].strip()
+            
             if tune_query:
-                tune_parameters(search_engine, tune_query, k=k)
-                last_query = tune_query  # Update last query after tuning
-        elif query == 'next':
+                tune_parameters(search_engine, tune_query, k=k, use_pagerank=use_pagerank)
+            else:
+                print("No query to tune. Run a query first or specify one with 'tune [query]'.")
+            continue
+        elif query.lower() == 'next':
             if not last_query:
                 print("No previous query to get next results for. Run a query first.")
             elif not search_engine.results:
                 print("No more results available for the last query.")
             else:
                 get_next_results(search_engine, k=k)
-        elif not query:
-            print("Empty query, please try again.")
-        else:
-            run_query(search_engine, query, k=k, debug=debug)
-            last_query = query  # Store the last query for 'next'
+            continue
+        elif query.lower() == 'pagerank:on':
+            use_pagerank = True
+            print("PageRank enabled for future queries.")
+            continue
+        elif query.lower() == 'pagerank:off':
+            use_pagerank = False
+            print("PageRank disabled for future queries.")
+            continue
+        
+        run_query(search_engine, query, use_pagerank=use_pagerank, k=k, debug=debug)
+        last_query = query
 
 def main():
-    # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Search Engine Driver (Single Engine Instance)")
     parser.add_argument('--k', type=int, default=10,
                         help="Number of results to return (default: 10)")
     parser.add_argument('--debug', action='store_true',
                         help="Enable debug output (terms, index hits, doc_ids)")
+    parser.add_argument('--pagerank', action='store_true',
+                        help="Enable PageRank for scoring by default")
     args = parser.parse_args()
     
-    # Initialize engine once
     try:
         search_engine = engine()
         print("Engine initialized successfully.")
@@ -143,7 +177,6 @@ def main():
         print(f"Failed to initialize engine: {e}")
         return
     
-    # Start interactive mode
     interactive_mode(search_engine, k=args.k, debug=args.debug)
 
 if __name__ == "__main__":
