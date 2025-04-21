@@ -8,6 +8,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from itertools import combinations
+import os
 
 
 class engine:
@@ -17,15 +18,22 @@ class engine:
     
     def __init__(self):
         """Initialize the search engine by loading indices and configuration parameters."""
+        base_dir  = os.path.dirname(os.path.abspath(__file__))
+        b_index_path   = os.path.join(base_dir, "Indexes", "b_index.json")
+        h_index_path   = os.path.join(base_dir, "Indexes", "h_index.json")
+        t_index_path   = os.path.join(base_dir, "Indexes", "t_index.json")
+        id_link_path   = os.path.join(base_dir, "Indexes", "id_link.csv")
+        doc_norms_path = os.path.join(base_dir, "Indexes", "doc_norms.csv")
+        pagerank_path  = os.path.join(base_dir, "Indexes", "pagerank.csv")
+
+        self.b_index = self._load_index(b_index_path)
+        self.h_index = self._load_index(h_index_path)
+        self.t_index = self._load_index(t_index_path)
         
-        self.b_index = self._load_index("Indexes/b_index.json")
-        self.h_index = self._load_index("Indexes/h_index.json")
-        self.t_index = self._load_index("Indexes/t_index.json")
-        
-        self.id_link = self._load_index("Indexes/id_link.csv")
-        self.doc_norms = self._load_index("Indexes/doc_norms.csv")
+        self.id_link   = self._load_index(id_link_path)
+        self.doc_norms = self._load_index(doc_norms_path)
         try:
-            self.pagerank = self._load_index("Indexes/pagerank.csv")
+            self.pagerank = self._load_index(pagerank_path)
         except Exception as e:
             print(f"Warning: Could not load PageRank data: {e}")
             self.pagerank = {}
@@ -77,7 +85,7 @@ class engine:
             return index_dict
         
         else:
-            base_name = name.split('/')[-1]
+            base_name = name.split('\\')[-1]
             
             if base_name == 'doc_norms':
                 index_df = pd.read_csv(index)
@@ -102,7 +110,7 @@ class engine:
         
     def search(self, query, use_pagerank=False):
         """Search for the given query and rank documents."""
-        
+        print("Search Function : ",query)
         self.results = SortedDict()  # Reset results as SortedDict
         self.current_result_index = 0  # Reset result index
         terms = self._process_query(query)
@@ -115,8 +123,7 @@ class engine:
         """Retrieve top k ranked results with their scores."""
         
         final_docs = []
-        results_items = list(self.results.items())
-        
+        results_items = list(self.results.items())    
         start_idx = self.current_result_index
         end_idx = min(start_idx + k, len(results_items))
         
@@ -127,9 +134,12 @@ class engine:
                 final_docs.append((link, -neg_score))
         
         self.current_result_index = end_idx
+        print(self.current_result_index)
+        print("Ret : ",final_docs)
         
         return final_docs
-    
+
+
     def _process_query(self, q):
         """Tokenize, clean, and lemmatize the input query."""
         

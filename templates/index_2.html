@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ditto</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Unified Search Engine</h1>
+    <form method="post" onsubmit="updateBingFrame()">
+      <input type="text" name="query" id="queryInput" placeholder="Enter query..." value="{{ query }}" required>
+      <button type="submit">Search</button>
+    </form>
+
+    {% if results.vsm %}
+    <div class="columns">
+      <!-- Custom Column -->
+      <div class="column">
+        <h2>Custom</h2>
+        <h3>VSM</h3>
+        <ul>{% for r in results.vsm[:3] %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+        <h3>PageRank</h3>
+        <ul>{% for r in results.pagerank[:3] %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+        <h3>HITS</h3>
+        <ul>{% for r in results.hits[:3] %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+      </div>
+
+      <!-- Google Column -->
+      <div class="column">
+        <h2>Google</h2>
+        <ul>
+          {% for r in results.google[:5] %}
+            <li><a href="{{ r.link }}" target="_blank">{{ r.title }}</a><p>{{ r.snippet }}</p></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Bing Column -->
+      <div class="column">
+        <h2>Bing</h2>
+        <iframe id="bingFrame"></iframe>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function updateBingFrame() {
+      const query = document.getElementById("queryInput").value;
+      const bingURL = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+      document.getElementById('bingFrame').src = bingURL;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const queryInput = document.getElementById("queryInput");
+      if (queryInput && queryInput.value.trim()) {
+        updateBingFrame();
+      }
+    });
+  </script>
+</body>
+</html>

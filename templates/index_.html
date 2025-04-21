@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Search Engine UI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Custom Search Engine</h1>
+    <form method="post">
+      <input type="text" name="query" placeholder="Enter query..." value="{{ query }}" required>
+      <button type="submit">Search</button>
+    </form>
+
+    {% if results.vsm %}
+      <div class="tabs">
+        {% for tab in ['vsm', 'pagerank', 'hits', 'clustering', 'query_expansion', 'google', 'bing'] %}
+          <button class="tablink" onclick="openTab('{{ tab }}')">{{ tab|capitalize }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="tabcontent" id="vsm">
+        <h2>Vector Space Model Results</h2>
+        <ul>{% for r in results.vsm %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+      </div>
+
+      <div class="tabcontent" id="pagerank">
+        <h2>PageRank Results</h2>
+        <ul>{% for r in results.pagerank %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+      </div>
+
+      <div class="tabcontent" id="hits">
+        <h2>HITS Results</h2>
+        <ul>{% for r in results.hits %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+      </div>
+
+      <div class="tabcontent" id="clustering">
+        <h2>Clustering-enhanced Results</h2>
+        <ul>{% for r in results.clustering %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+      </div>
+
+      <div class="tabcontent" id="query_expansion">
+        <h2>Query Expansion Results</h2>
+        <p><strong>Expanded Query:</strong> {{ results.expanded_query }}</p>
+        <ul>{% for r in results.query_expansion %}<li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>{% endfor %}</ul>
+      </div>
+
+      <div class="tabcontent" id="google">
+        <h2>Google Results</h2>
+        <ul>{% for r in results.google %}<li><a href="{{ r.link }}" target="_blank">{{ r.title }}</a><p>{{ r.snippet }}</p></li>{% endfor %}</ul>
+      </div>
+
+      <div class="tabcontent" id="bing">
+        <h2>Bing Results</h2>
+        <iframe id="bingFrame" width="100%" height="600px" style="border:none;"></iframe>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+   
+    function openTab(tabName) 
+      {
+        let tabs                                       = document.getElementsByClassName("tabcontent");
+        for (let tab of tabs) tab.style.display        = "none";
+        document.getElementById(tabName).style.display = "block";
+
+        if (tabName === 'bing') 
+          {
+            const query = document.querySelector('input[name="query"]').value;
+            if (query)
+               {
+                const bingURL                            = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+                document.getElementById('bingFrame').src = bingURL;
+              }
+          }
+      }
+
+    document.addEventListener("DOMContentLoaded", () => openTab('vsm'));
+  
+  </script>
+</body>
+</html>

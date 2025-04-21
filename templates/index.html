@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ditto</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='index_style.css') }}"> 
+</head>
+<body>
+
+  <div class="wrapper">
+    <div class="container">
+      <!-- <h1>Ditto</h1> -->
+       <img src="{{ url_for('static', filename='ditto_letter.png') }}" alt="Logo" class="logo-image">
+      <form method="post">
+        <input type="text" name="query" list = "past-queries" placeholder="Enter your search query..." value="{{ query }}" required>
+        <datalist id="past-queries">
+          {% for q in history %}
+            <option value="{{ q }}">
+          {% endfor %}
+        </datalist>
+        <button type="submit">Search</button>
+      </form>
+    </div>  
+
+    <footer style="text-align: center; padding: 20px; color: #888;">
+      &copy; {{ year }} Ditto Search Engine. All rights reserved.
+    </footer>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ditto Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+  <body>
+    <div class="container">
+      <form method="post" action="/">
+        <input type="text" name="query" list = "past-queries" placeholder="Enter your search query..." value="{{ query }}" required>
+          <datalist id="past-queries">
+              {% for q in history %}
+                <option value="{{ q }}">
+              {% endfor %}
+          </datalist>
+        <button type="submit">Search</button>      
+      </form>
+
+      <!-- Tab Buttons -->
+      <div class="tab-buttons">
+        <button class="tab-btn active" onclick="showTab(event, 'relevance')">Relevance</button>
+        <button class="tab-btn" onclick="showTab(event, 'page_rank')">Page Rank</button>
+        <button class="tab-btn" onclick="showTab(event, 'hits')">HITS</button>
+        <button class="tab-btn" onclick="showTab(event, 'flat_clustering')">Flat Clustering</button>
+        <button class="tab-btn" onclick="showTab(event, 'aglo_clustering')">Agglomerative Single</button>
+        <button class="tab-btn" onclick="showTab(event, 'aglo_com_clustering')">Agglomerative Complete</button>
+        <button class="tab-btn" onclick="showTab(event, 'rocchio')">Rocchio</button>
+        <button class="tab-btn" onclick="showTab(event, 'association')">Associations</button>
+        <button class="tab-btn" onclick="showTab(event, 'metric')">Metric</button>
+        <button class="tab-btn" onclick="showTab(event, 'scalar')">Scalar</button>
+      </div>
+
+      <div class="columns">
+       <!-- Custom Column -->
+        <div class="column">
+          <div class="results-box">
+            <h2>Custom Results</h2>
+
+            <!-- Tab Contents -->
+            <div id="relevance" class="tab-content" style="display: none;">
+              <ul>
+                {% for r in results.relevance %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="page_rank" class="tab-content" style="display: none;">
+              <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="hits" class="tab-content" style="display: block;">
+              <!-- <ul>
+                {% for r in results.vsm %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="flat_clustering" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="aglo_clustering" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="aglo_com_clustering" class="tab-content" style="display: block;">
+              <!-- <ul>
+                {% for r in results.vsm %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="rocchio" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="association" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="association" class="tab-content" style="display: block;">
+              <!-- <ul>
+                {% for r in results.vsm %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="metric" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="scalar" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+          </div>
+        </div>
+
+
+        <!-- Google + Bing Column -->
+        <div class="column">
+          <div class="results-box">
+            <h2>Google Results</h2>
+            <ul>
+              {% for r in results.google %}
+                <li><a href="{{ r.link }}" target="_blank">{{ r.title }}</a><p>{{ r.snippet }}</p></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+
+
+          <div class="results-box">
+            <h2>Bing Results</h2>
+            <iframe id="bingFrame" src="https://www.bing.com/search?q={{ query }}" width="100%" height="100%" style="border:none;"></iframe>
+          </div>
+        </div>
+      </div>
+    
+    </div>
+
+    <script>
+        function showTab(evt, tabId) 
+          {
+            const contents = document.querySelectorAll(".tab-content");
+            const buttons  = document.querySelectorAll(".tab-btn");
+
+            // Hide all tab contents and remove active class
+            contents.forEach(content => content.style.display = "none");
+            buttons.forEach(btn => btn.classList.remove("active"));
+
+            // Show selected tab content
+            document.getElementById(tabId).style.display = "block";
+
+            // If triggered by a button click
+            if (evt && evt.currentTarget) {
+              evt.currentTarget.classList.add("active");
+            } else {
+              // Select the button by matching its onclick handler
+              const tabBtn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
+              if (tabBtn) tabBtn.classList.add("active");
+            }
+          }
+
+
+          window.onload = () => {
+                                  showTab(null, 'relevance');
+                                };
+    </script>
+
+  </body>
+</html>
