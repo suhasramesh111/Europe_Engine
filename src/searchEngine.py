@@ -3,21 +3,20 @@ import json
 import string
 from sortedcontainers import SortedDict
 import numpy as np
-
+import networkx as nx
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from itertools import combinations
 import os
 
-
 class engine:
     """
-    Search engine class that supports BM25 ranking with proximity-based boosting.
+    Search engine class that supports BM25 ranking with proximity-based boosting and HITS scoring.
     """
     
     def __init__(self):
-        """Initialize the search engine by loading indices and configuration parameters."""
+        """Initialize the search engine by loading indices, web graph, and configuration parameters."""
         base_dir  = os.path.dirname(os.path.abspath(__file__))
         b_index_path   = os.path.join(base_dir, "Indexes", "b_index.json")
         h_index_path   = os.path.join(base_dir, "Indexes", "h_index.json")
@@ -25,18 +24,40 @@ class engine:
         id_link_path   = os.path.join(base_dir, "Indexes", "id_link.csv")
         doc_norms_path = os.path.join(base_dir, "Indexes", "doc_norms.csv")
         pagerank_path  = os.path.join(base_dir, "Indexes", "pagerank.csv")
+        web_graph_path = os.path.join(base_dir, "Indexes", "web_graph_edgelist.csv")
+        
+        
 
         self.b_index = self._load_index(b_index_path)
+        print("finished loading body..")
+        
         self.h_index = self._load_index(h_index_path)
+        print("finished loading header..")
+        
         self.t_index = self._load_index(t_index_path)
+        print("finished loading title..")
+        
         
         self.id_link   = self._load_index(id_link_path)
+        print("finished loading id -> link..")
+        
         self.doc_norms = self._load_index(doc_norms_path)
+        print("finished loading doc_norms..")
+        
         try:
             self.pagerank = self._load_index(pagerank_path)
         except Exception as e:
             print(f"Warning: Could not load PageRank data: {e}")
             self.pagerank = {}
+        print("finished loading pagerank..")
+        
+        # Load web graph for HITS
+        try:
+            self.web_graph = self._load_web_graph(web_graph_path)
+        except Exception as e:
+            print(f"Warning: Could not load web graph data: {e}")
+            self.web_graph = nx.DiGraph()
+        print("finished loading web graph..")
         
         self.stop_words = set(stopwords.words('english'))
         self.wnl = WordNetLemmatizer()
@@ -49,7 +70,7 @@ class engine:
         self.k1 = 1.5
         self.b = 0.75
         
-        self.results = SortedDict() # Use SortedDict instead of heap
+        self.results = SortedDict() 
         self.max_links = 1000
         
         self.proximity_weight_b = 0.5
@@ -57,8 +78,9 @@ class engine:
         self.proximity_weight_t = 0.5 
         self.proximity_scale = 10.0
         
-        self.bm25_weight = 0.7      # Weight for BM25 score
+        self.bm25_weight = 0.6      # Adjusted to accommodate HITS weight
         self.pagerank_weight = 0.3  # Weight for PageRank score
+        self.hits_weight = 0.1      # Weight for HITS authority score
         
         # Keep track of which results have been returned
         self.current_result_index = 0
@@ -99,16 +121,19 @@ class engine:
             
             elif base_name == 'pagerank':
                 index_df = pd.read_csv(index)
-                index_dict = dict(zip(index_df.iloc[:, 0].astype(int), index_df.iloc[:, 1]))
+                index_dict = dict(zip(index_df.iloc[:, 0].astype(int), index_df.iloc[:, 2]))
                 return index_dict
             
             else:
                 index_df = pd.read_csv(index)
                 index_dict = dict(zip(index_df.iloc[:, 0], index_df.iloc[:, 1]))
                 return index_dict
+    
+    def _load_web_graph(self, path):
+        """Load the web graph from a CSV edge list."""
+        return nx.read_edgelist(path, delimiter=",", create_using=nx.DiGraph(), nodetype=str)
             
-        
-    def search(self, query, use_pagerank=False):
+    def search(self, query, use_pagerank=False, use_hits=False):
         """Search for the given query and rank documents."""
         print("Search Function : ",query)
         self.results = SortedDict()  # Reset results as SortedDict
@@ -116,7 +141,7 @@ class engine:
         terms = self._process_query(query)
         if not terms:
             return
-        self._rank_docs(terms, use_pagerank)
+        self._rank_docs(terms, use_pagerank, use_hits)
     
     
     def retrieve_new_res(self, k=10):
@@ -134,8 +159,8 @@ class engine:
                 final_docs.append((link, -neg_score))
         
         self.current_result_index = end_idx
-        print(self.current_result_index)
-        print("Ret : ",final_docs)
+        # print(self.current_result_index)
+        # print("Ret : ",final_docs)
         
         return final_docs
 
@@ -147,23 +172,26 @@ class engine:
         return [self.wnl.lemmatize(t) for t in tokens if t not in self.stop_words and t not in self.punctuation]
     
     
-    def _rank_docs(self, terms, use_pagerank=False):
-        """Rank documents using BM25 and proximity boosting."""
+    def _rank_docs(self, terms, use_pagerank=False, use_hits=False):
+        """Rank documents using BM25, proximity boosting, and optional HITS."""
         
-        all_docs = self._score_docs(terms, use_pagerank)
+        all_docs = self._score_docs(terms, use_pagerank, use_hits)
         for doc_id, score in all_docs.items():
             self.results[-score] = doc_id
             if len(self.results) > self.max_links:
                 self.results.popitem(index=-1)
     
     
-    def _score_docs(self, terms, use_pagerank=False):
-        """Compute document scores as a weighted average of BM25 and PageRank when enabled."""
+    def _score_docs(self, terms, use_pagerank=False, use_hits=False):
+        """Compute document scores as a weighted average of BM25, PageRank, and HITS when enabled."""
         
         res = {}
         term_positions_b = {}
         term_positions_h = {}
         term_positions_t = {}
+        
+        # Collect all relevant document IDs
+        relevant_doc_ids = set()
         
         for term in terms:
             if term in self.b_index:
@@ -176,6 +204,7 @@ class engine:
                     
                     bm = self._calc_bm(idf_, doc_norm, tf_)
                     res[doc_id] = res.get(doc_id, 0) + self.b_contri * bm
+                    relevant_doc_ids.add(str(doc_id))
                     
                     if doc_id not in term_positions_b:
                         term_positions_b[doc_id] = {}
@@ -193,6 +222,7 @@ class engine:
                     
                     bm = self._calc_bm(idf_, doc_norm, tf_)
                     res[doc_id] = res.get(doc_id, 0) + self.h_contri * bm
+                    relevant_doc_ids.add(str(doc_id))
                     
                     if doc_id not in term_positions_h:
                         term_positions_h[doc_id] = {}
@@ -210,6 +240,7 @@ class engine:
                     
                     bm = self._calc_bm(idf_, doc_norm, tf_)
                     res[doc_id] = res.get(doc_id, 0) + self.t_contri * bm
+                    relevant_doc_ids.add(str(doc_id))
                     
                     if doc_id not in term_positions_t:
                         term_positions_t[doc_id] = {}
@@ -238,15 +269,26 @@ class engine:
             self.proximity_weight_t * (boosts_t - 1)
         )
         
+        final_scores = self.bm25_weight * bm25_scores
+        
         if use_pagerank and self.pagerank:
-            final_scores = self.bm25_weight * bm25_scores
             pagerank_scores = np.zeros(len(doc_ids))
             for i, doc_id in enumerate(doc_ids):
                 if doc_id in self.pagerank:
                     pagerank_scores[i] = self.pagerank[doc_id]
             final_scores = final_scores + self.pagerank_weight * pagerank_scores
-        else:
-            final_scores = bm25_scores
+        
+        if use_hits and self.web_graph:
+            # Create subgraph with relevant document IDs
+            subgraph = self.web_graph.subgraph(relevant_doc_ids).copy()
+            try:
+                _, authority_scores = nx.hits(subgraph, max_iter=100, tol=1e-8)
+                hits_scores = np.zeros(len(doc_ids))
+                for i, doc_id in enumerate(doc_ids):
+                    hits_scores[i] = authority_scores.get(str(doc_id), 0.0)
+                final_scores = final_scores + self.hits_weight * hits_scores
+            except nx.PowerIterationFailedConvergence:
+                print("Warning: HITS computation did not converge. Skipping HITS scores.")
         
         return {doc_id: score for doc_id, score in zip(doc_ids, final_scores)}
     
@@ -300,7 +342,7 @@ class engine:
         return idf * ((self.k1 + 1) * tf)/(self.k1*((1-self.b)+self.b*doc_norm)+tf)
         
     def check(self):
-        """Print samples of loaded indices for verification."""
+        """Print samples of loaded indices and web graph for verification."""
         
         print("b_index:")
         for i, (key, value) in enumerate(self.b_index.items()):
@@ -351,4 +393,14 @@ class engine:
             ranks.sort(key=lambda x: x[1], reverse=True)
             for i, (doc_id, rank) in enumerate(ranks[:5]):
                 print(f"Doc ID {doc_id}: {rank}")
+            print()
+        
+        if self.web_graph:
+            print("Web Graph:")
+            print(f"  Number of nodes: {self.web_graph.number_of_nodes()}")
+            print(f"  Number of edges: {self.web_graph.number_of_edges()}")
+            print("  Sample edges:")
+            edges = list(self.web_graph.edges())[:5]
+            for edge in edges:
+                print(f"    {edge[0]} -> {edge[1]}")
             print()
