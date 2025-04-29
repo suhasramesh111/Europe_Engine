@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import string
+import math
 from sortedcontainers import SortedDict
 import numpy as np
 import networkx as nx
@@ -24,7 +25,7 @@ class engine:
         id_link_path   = os.path.join(base_dir, "Indexes", "id_link.csv")
         doc_norms_path = os.path.join(base_dir, "Indexes", "doc_norms.csv")
         pagerank_path  = os.path.join(base_dir, "Indexes", "pagerank.csv")
-        web_graph_path = os.path.join(base_dir, "Indexes", "web_graph_edgelist.csv")
+        auth_scores_path = os.path.join(base_dir, "Indexes", "normalized_authority_scores.csv")
         
         
 
@@ -51,36 +52,36 @@ class engine:
             self.pagerank = {}
         print("finished loading pagerank..")
         
-        # Load web graph for HITS
+        # Load authority scores for HITS
         try:
-            self.web_graph = self._load_web_graph(web_graph_path)
+            self.hits_scores = self._load_auth_scores(auth_scores_path)
         except Exception as e:
-            print(f"Warning: Could not load web graph data: {e}")
-            self.web_graph = nx.DiGraph()
-        print("finished loading web graph..")
+            print(f"Warning: Could not load authority scores data: {e}")
+            self.hits_scores = nx.DiGraph()
+        print("finished loading Authority scores..")
         
         self.stop_words = set(stopwords.words('english'))
         self.wnl = WordNetLemmatizer()
         self.punctuation = string.punctuation
         
-        self.b_contri = 1/6 # contribution weight for body index
-        self.h_contri = 1/3 # contribution weight for headings index
-        self.t_contri = 1/2 # contribution weight for title index
+        self.b_contri = 1 # contribution weight for body index
+        self.h_contri = 1.5 # contribution weight for headings index
+        self.t_contri = 2 # contribution weight for title index
         
-        self.k1 = 1.5
-        self.b = 0.75
+        self.k1 = 1.8
+        self.b = 0.25
         
         self.results = SortedDict() 
         self.max_links = 1000
         
-        self.proximity_weight_b = 0.5
-        self.proximity_weight_h = 0.3
-        self.proximity_weight_t = 0.5 
-        self.proximity_scale = 10.0
+        self.proximity_weight_b = 1
+        self.proximity_weight_h = 3
+        self.proximity_weight_t = 5 
+        self.proximity_scale = 25
         
-        self.bm25_weight = 0.6      # Adjusted to accommodate HITS weight
-        self.pagerank_weight = 0.3  # Weight for PageRank score
-        self.hits_weight = 0.1      # Weight for HITS authority score
+        self.bm25_weight = 1      # Adjusted to accommodate HITS weight
+        self.pagerank_weight = 10  # Weight for PageRank score
+        self.hits_weight = 25     # Weight for HITS authority score
         
         # Keep track of which results have been returned
         self.current_result_index = 0
@@ -129,9 +130,11 @@ class engine:
                 index_dict = dict(zip(index_df.iloc[:, 0], index_df.iloc[:, 1]))
                 return index_dict
     
-    def _load_web_graph(self, path):
+    def _load_auth_scores(self, path):
         """Load the web graph from a CSV edge list."""
-        return nx.read_edgelist(path, delimiter=",", create_using=nx.DiGraph(), nodetype=str)
+        hits_df = pd.read_csv(path)
+        hits_dict = dict(zip(hits_df.iloc[:, 0].astype(int), hits_df.iloc[:, 1]))
+        return hits_dict
             
     def search(self, query, use_pagerank=False, use_hits=False):
         """Search for the given query and rank documents."""
@@ -278,18 +281,14 @@ class engine:
                     pagerank_scores[i] = self.pagerank[doc_id]
             final_scores = final_scores + self.pagerank_weight * pagerank_scores
         
-        if use_hits and self.web_graph:
+        if use_hits and self.hits_scores:
             # Create subgraph with relevant document IDs
-            subgraph = self.web_graph.subgraph(relevant_doc_ids).copy()
-            try:
-                _, authority_scores = nx.hits(subgraph, max_iter=100, tol=1e-8)
-                hits_scores = np.zeros(len(doc_ids))
-                for i, doc_id in enumerate(doc_ids):
-                    hits_scores[i] = authority_scores.get(str(doc_id), 0.0)
-                final_scores = final_scores + self.hits_weight * hits_scores
-            except nx.PowerIterationFailedConvergence:
-                print("Warning: HITS computation did not converge. Skipping HITS scores.")
-        
+            hits_score = np.zeros(len(doc_ids))
+            for i, doc_id in enumerate(doc_ids):
+                if doc_id in self.hits_scores:
+                    hits_score[i] = self.hits_scores[doc_id]
+            final_scores = final_scores + self.hits_weight * hits_score
+
         return {doc_id: score for doc_id, score in zip(doc_ids, final_scores)}
     
     
@@ -330,7 +329,9 @@ class engine:
                     j += 1
                     
             if min_dist < float('inf'):
-                boost = 1 / (1 + min_dist / self.proximity_scale)
+                # boost = 1 / (1 + min_dist / self.proximity_scale)
+                boost = math.exp(-(min_dist**2) / (2 * self.proximity_scale**2))
+                # boost = math.exp(-min_dist / self.proximity_scale)
                 total_boost += boost
                 pair_count += 1
         
@@ -395,12 +396,10 @@ class engine:
                 print(f"Doc ID {doc_id}: {rank}")
             print()
         
-        if self.web_graph:
-            print("Web Graph:")
-            print(f"  Number of nodes: {self.web_graph.number_of_nodes()}")
-            print(f"  Number of edges: {self.web_graph.number_of_edges()}")
-            print("  Sample edges:")
-            edges = list(self.web_graph.edges())[:5]
-            for edge in edges:
-                print(f"    {edge[0]} -> {edge[1]}")
+        if self.hits_scores:
+            print("HITS scores")
+            ranks = list(self.hits_scores.items())
+            ranks.sort(key=lambda x: x[1], reverse=True)
+            for i, (doc_id, score) in enumerate(ranks[:5]):
+                print(f"Doc ID {doc_id}: {score}")
             print()
