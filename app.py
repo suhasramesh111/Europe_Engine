@@ -102,63 +102,109 @@ def results():
 
     try:
         relevance_results = retreive_response(engine_handle, query, False, False, MODEL_RESPONSE_LIMIT)
-
+        
         if method == 'relevance':
-            results = relevance_results
-            algo_choice = 'relevance'
-        
+            try:
+                results = relevance_results
+                algo_choice = 'relevance'
+            except Exception as e:
+                print("[relevance] Error:", e)
+
         elif method == 'pagerank':
-            results = retreive_response(engine_handle, query, True, False, MODEL_RESPONSE_LIMIT)
-            algo_choice = 'pagerank'
-        
+            try:
+                results = retreive_response(engine_handle, query, True, False, MODEL_RESPONSE_LIMIT)
+                algo_choice = 'pagerank'
+            except Exception as e:
+                print("[pagerank] Error:", e)
+
         elif method == 'hits':
-            results = retreive_response(engine_handle, query, False, True, MODEL_RESPONSE_LIMIT)
-            algo_choice = 'hits'
-        
+            try:
+                results = retreive_response(engine_handle, query, False, True, MODEL_RESPONSE_LIMIT)
+                algo_choice = 'hits'
+            except Exception as e:
+                print("[hits] Error:", e)
+
         elif method == 'kmeans':
-            results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'kmeans')
-            algo_choice = 'kmeans'
+            try:
+                results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'kmeans')
+                algo_choice = 'kmeans'
+            except Exception as e:
+                print("[kmeans] Error:", e)
 
         elif method == 'flat':
-            results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'flat')
-            algo_choice = 'flat'
+            try:
+                results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'flat')
+                algo_choice = 'flat'
+            except Exception as e:
+                print("[flat] Error:", e)
 
         elif method == 'agglo_single':
-            results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'agglo_single')
-            algo_choice = 'agglo_single'
+            try:
+                results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'agglo_single')
+                algo_choice = 'agglo_single'
+            except Exception as e:
+                print("[agglo_single] Error:", e)
 
         elif method == 'agglo_complete':
-            results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'agglo_complete')
-            algo_choice = 'agglo_complete'
-        
-        elif method == 'rocchio':
-            results, expanded_query = fetch_rocchio_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
-            algo_choice = 'rocchio'
-        
-        elif method == 'association':
-            results, expanded_query = fetch_associative_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
-            algo_choice = 'association'
-        
-        elif method == 'metric':
-            results, expanded_query = fetch_metric_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
-            algo_choice = 'metric'
-       
-        elif method == 'scalar':
-            results, expanded_query = fetch_scalar_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
-            algo_choice = 'scalar'
+            try:
+                results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'agglo_complete')
+                algo_choice = 'agglo_complete'
+            except Exception as e:
+                print("[agglo_complete] Error:", e)
 
-        results_google = fetch_google_search(query)
+        elif method == 'rocchio':
+            try:
+                results, expanded_query = fetch_rocchio_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
+                algo_choice = 'rocchio'
+            except Exception as e:
+                print("[rocchio] Error:", e)
+
+        elif method == 'association':
+            try:
+                results, expanded_query = fetch_associative_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
+                algo_choice = 'association'
+            except Exception as e:
+                print("[association] Error:", e)
+
+        elif method == 'metric':
+            try:
+                results, expanded_query = fetch_metric_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
+                algo_choice = 'metric'
+            except Exception as e:
+                print("[metric] Error:", e)
+
+        elif method == 'scalar':
+            try:
+                results, expanded_query = fetch_scalar_response(query, relevance_results, rocchio_handle, engine_handle, MODEL_RESPONSE_LIMIT)
+                algo_choice = 'scalar'
+            except Exception as e:
+                print("[scalar] Error:", e)
+
+        try:
+            results_google = fetch_google_search(query)
+        except Exception as e:
+            print("[google] Error:", e)
+            results_google = []
 
         query_list = [q.replace("\n", "") for q in read_file(PAST_QUERY_FILE)][-5:]
-        rendered = render_template('results.html', query=query, results=results, history=query_list, algo=algo_choice, expanded_query=expanded_query, results_google=results_google)
+        
+        rendered = render_template(
+            'results.html',
+            query=query,
+            results=results,
+            history=query_list,
+            algo=algo_choice,
+            expanded_query=expanded_query,
+            results_google=results_google
+        )
         response = make_response(rendered)
         response.headers['Cache-Control'] = 'no-store'
-       
         return response
 
     except Exception as e:
-        print("Error:", e)
+        print("[GLOBAL] Error:", e)
         return make_response("Ahh, Something went wrong :)", 500)
+
 
 
 def simulate_results(source, query):
