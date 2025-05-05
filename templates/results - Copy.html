@@ -19,21 +19,18 @@
           <option value="relevance">Relevance</option>
           <option value="pagerank">PageRank</option>
           <option value="hits">HITS</option>
-          <option value="flat">Flat Cluster-Enhanced Search</option>
-          <option value="kmeans">K-means Basic Search</option>
-          <option value="agglo_single">Agglomerative (Single) Cluster-Enhanced Search</option>
-          <option value="agglo_complete">Agglomerative (Complete) Cluster-Enhanced Search</option>
+          <option value="flat_clustering">Flat Clustering</option>
           <option value="rocchio">Rocchio</option>
           <option value="association">Associations</option>
           <option value="metric">Metric</option>
           <option value="scalar">Scalar</option>
         </select>
-
+        
         <button type="submit">Search</button>      
       </form>
 
       <!-- Tab Buttons -->
-      <!-- <div class="tab-buttons">
+      <div class="tab-buttons">
         <button class="tab-btn active" onclick="showTab(event, 'relevance')">Relevance</button>
         <button class="tab-btn" onclick="showTab(event, 'page_rank')">Page Rank</button>
         <button class="tab-btn" onclick="showTab(event, 'hits')">HITS</button>
@@ -44,7 +41,7 @@
         <button class="tab-btn" onclick="showTab(event, 'association')">Associations</button>
         <button class="tab-btn" onclick="showTab(event, 'metric')">Metric</button>
         <button class="tab-btn" onclick="showTab(event, 'scalar')">Scalar</button>
-      </div> -->
+      </div>
 
       <p style="margin: 10px 0; font-weight: bold; display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
         Expanded Query: <span id="expandedQueryText" style="font-style: italic;"></span>
@@ -57,14 +54,83 @@
             <h2>Custom Results</h2>
 
             <!-- Tab Contents -->
-            <div id="results_tab" class="tab-content" style="display: none;">
+            <div id="relevance" class="tab-content" style="display: none;">
               <ul>
                 {% for r in results.relevance %}
                   <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
                 {% endfor %}
               </ul>
+            </div>
+
+            <div id="page_rank" class="tab-content" style="display: none;">
               <ul>
-                {% for r in results %}
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="hits" class="tab-content" style="display: block;">
+              <ul>
+                {% for r in results.hits %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="flat_clustering" class="tab-content" style="display: none;">
+              <ul>
+                {% for r in results.kmeans %}
+                  <li><a href="{{ r }}" target="_blank">{{ r }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="aglo_clustering" class="tab-content" style="display: none;">
+              <!-- <ul>
+                {% for r in results.pagerank %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="aglo_com_clustering" class="tab-content" style="display: block;">
+              <!-- <ul>
+                {% for r in results.vsm %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul> -->
+            </div>
+
+            <div id="rocchio" class="tab-content" style="display: none;">
+
+              <!-- <ul>Expanded Query : {{results.rocchio.expanded_query}}</ul> -->
+              <ul>
+                {% for r in results.rocchio.response %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="association" class="tab-content" style="display: none;">
+              <ul>
+                {% for r in results.association.response %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>            
+
+            <div id="metric" class="tab-content" style="display: none;">
+               <ul>
+                {% for r in results.metric.response %}
+                  <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div id="scalar" class="tab-content" style="display: none;">
+              <ul>
+                {% for r in results.scalar.response %}
                   <li><a href="{{ r.url }}" target="_blank">{{ r.title }}</a></li>
                 {% endfor %}
               </ul>
@@ -79,7 +145,7 @@
           <div class="results-box">
             <h2>Google Results</h2>
             <ul>
-              {% for r in results_google %}
+              {% for r in results.google %}
                 <li><a href="{{ r.link }}" target="_blank">{{ r.title }}</a><p>{{ r.snippet }}</p></li>
               {% endfor %}
             </ul>
@@ -122,71 +188,42 @@
               } 
             
             const expandedContainer = document.getElementById("expandedQueryText");
-            const algo = "{{ algo }}";  // assign once
+            
+            expandedContainer.style.display = (tabId === 'association') ? 'block' : 'none';
 
-            if (algo === 'rocchio' || algo === 'association' || algo === 'metric' || algo === 'scalar') 
+            if (tabId === 'rocchio') 
               {
-                  expandedContainer.textContent = "{{ expanded_query }}";
-                  expandedContainer.style.display = 'block';
+                // expandedBox.style.display = "flex";
+                expandedContainer.textContent = "{{ results.rocchio.expanded_query }}"; // rendered by Jinja
+                expandedContainer.style.display =  'block';
+              } 
+            else if (tabId == 'association')
+              {
+                expandedContainer.textContent = "{{ results.association.expanded_query }}"
+                expandedContainer.style.display =  'block';
+              }
+            else if (tabId == 'metric')
+              {
+                expandedContainer.textContent = "{{ results.metric.expanded_query }}"
+                expandedContainer.style.display =  'block';
+              }
+            else if (tabId == 'scalar')
+              {
+                expandedContainer.textContent = "{{ results.scalar.expanded_query }}"
+                expandedContainer.style.display =  'block';
               }
             else 
               {
-                  expandedContainer.textContent = "";
-                  expandedContainer.style.display = 'none';
+                // expandedBox.style.display = "none";
+                expandedContainer.textContent = "";
+                expandedContainer.style.display =  'none';
               }
-
-
-            if (algo === 'rocchio') 
-              {
-                document.querySelector('select[name="method"]').value = 'rocchio';
-              } 
-            else if (algo === 'association') 
-              {
-                document.querySelector('select[name="method"]').value = 'association';
-              } 
-            else if (algo === 'scalar') 
-              {
-                document.querySelector('select[name="method"]').value = 'scalar';
-              } 
-            else if (algo === 'metric') 
-              {
-                document.querySelector('select[name="method"]').value = 'metric';
-              } 
-            else if (algo === 'kmeans') 
-              {
-                document.querySelector('select[name="method"]').value = 'kmeans';
-              } 
-            else if (algo === 'hits') 
-              {
-                document.querySelector('select[name="method"]').value = 'hits';
-              } 
-            else if (algo === 'pagerank')
-               {
-                document.querySelector('select[name="method"]').value = 'pagerank';
-              } 
-            else if (algo === 'relevance') 
-              {
-                document.querySelector('select[name="method"]').value = 'relevance';
-              }
-            else if (algo === 'flat') 
-              {
-                document.querySelector('select[name="method"]').value = 'flat';
-              } 
-            else if (algo === 'agglo_single') 
-              {
-                document.querySelector('select[name="method"]').value = 'agglo_single';
-              } 
-            else if (algo === 'agglo_complete') 
-              {
-                document.querySelector('select[name="method"]').value = 'agglo_complete';
-              } 
-
 
           }
 
 
           window.onload = () => {
-                                  showTab(null, 'results_tab');
+                                  showTab(null, 'relevance');
                                 };
     </script>
 
