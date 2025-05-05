@@ -92,19 +92,22 @@ class engine:
         name, ext = index.split('.')
         
         if ext=='json':
-            index_df = pd.read_json(index, lines = True)
             index_dict = {}
-            for _, row in index_df.iterrows():
-                term = row['term']
-                postings = row['Postings']
-                if isinstance(postings, str):
-                    postings = json.loads(postings.replace("'", "\""))
+    
+            with open(index, 'r', encoding = 'latin1') as f:
+                for line in f:
+                    row = json.loads(line)
+                    postings = row['Postings']
                     
-                index_dict[term] = {
-                    'postings': postings,
-                    'df': row['df'],
-                    'idf': row['idf']
+                    if isinstance(postings, str):
+                        postings = json.loads(postings.replace("'", "\""))
+                        
+                    index_dict[row['term']] = {
+                        'postings': postings,
+                        'df': row['df'],
+                        'idf': row['idf']
                     }
+            
             return index_dict
         
         else:
