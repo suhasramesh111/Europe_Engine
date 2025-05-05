@@ -25,13 +25,36 @@ form {
   gap: 10px;
 }
 
-input[type="text"] {
-  width: 700px;
+input[type="text"],
+select {
   padding: 10px 20px;
+  width: 800px;
   font-size: 16px;
   border-radius: 25px;
   border: 1px solid #ccc;
   height: 45px;
+  background-color: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+select:hover,
+input[type="text"]:hover {
+  border-color: #888;
+}
+
+select:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: #6c63ff;
+  box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.3);
+}
+
+select{
+  width: 400px;
 }
 
 button {
