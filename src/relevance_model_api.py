@@ -2,7 +2,7 @@ import os
 from   searchEngine import *
 import time
 import sys
-from   rocchio import *
+from   rocchio_corrected_embeddings import *
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # print("Loading Modal..")
@@ -171,14 +171,14 @@ def fetch_clustering_response(query, k, cluster_handle, cluster_type):
 	data_dict = {}
 	response  = []
 
-	if cluster_type == 'kmeans':
-		print("[K-means CLUSTERING]")
-		results = cluster_handle.kmeans_search(query, k)
-		print(results['query'])
-		print(results['processed_query'])
-		results = results['results']
+	# if cluster_type == 'kmeans':
+	# 	print("[K-means CLUSTERING]")
+	# 	results = cluster_handle.kmeans_search(query, k)
+	# 	print(results['query'])
+	# 	print(results['processed_query'])
+	# 	results = results['results']
 
-	elif cluster_type == 'flat':
+	if cluster_type == 'flat':
 		print("[FLAT CLUSTERING]")
 		results = cluster_handle.flat_cluster_search(query, k)
 		print(results['query'])
