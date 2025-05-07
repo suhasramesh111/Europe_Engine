@@ -19,12 +19,12 @@
           <option value="relevance">Relevance</option>
           <option value="pagerank">PageRank</option>
           <option value="hits">HITS</option>
-          <option value="flat">Flat Cluster-Enhanced Search</option>
-          <option value="kmeans">K-means Basic Search</option>
-          <option value="agglo_single">Agglomerative (Single) Cluster-Enhanced Search</option>
-          <option value="agglo_complete">Agglomerative (Complete) Cluster-Enhanced Search</option>
+          <option value="flat">Flat Cluster</option>
+          <!-- <option value="kmeans">K-means Basic Search</option> -->
+          <option value="agglo_single">Agglomerative (Single) Cluster</option>
+          <option value="agglo_complete">Agglomerative (Complete) Cluster</option>
           <option value="rocchio">Rocchio</option>
-          <option value="association">Associations</option>
+          <option value="association">Association</option>
           <option value="metric">Metric</option>
           <option value="scalar">Scalar</option>
         </select>
@@ -152,10 +152,10 @@
               {
                 document.querySelector('select[name="method"]').value = 'metric';
               } 
-            else if (algo === 'kmeans') 
-              {
-                document.querySelector('select[name="method"]').value = 'kmeans';
-              } 
+            // else if (algo === 'kmeans') 
+            //   {
+            //     document.querySelector('select[name="method"]').value = 'kmeans';
+            //   } 
             else if (algo === 'hits') 
               {
                 document.querySelector('select[name="method"]').value = 'hits';
