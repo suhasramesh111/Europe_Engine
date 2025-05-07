@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 from google_api          import fetch_google_search
 from relevance_model_api import *
 from searchEngine        import *
-from rocchio             import Rocchio_
+from rocchio_corrected_embeddings             import Rocchio_
 from query_experiments   import *
 
 start_time = time.time()
@@ -124,12 +124,12 @@ def results():
             except Exception as e:
                 print("[hits] Error:", e)
 
-        elif method == 'kmeans':
-            try:
-                results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'kmeans')
-                algo_choice = 'kmeans'
-            except Exception as e:
-                print("[kmeans] Error:", e)
+        # elif method == 'kmeans':
+        #     try:
+        #         results = fetch_clustering_response(query, MODEL_RESPONSE_LIMIT, cluster_handle, 'kmeans')
+        #         algo_choice = 'kmeans'
+        #     except Exception as e:
+        #         print("[kmeans] Error:", e)
 
         elif method == 'flat':
             try:
@@ -181,7 +181,12 @@ def results():
                 print("[scalar] Error:", e)
 
         try:
-            results_google = fetch_google_search(query)
+            # if expanded_query != "":
+            #     print("[USING EXPANDED QUERY] ", expanded_query)
+            #     query = expanded_query
+
+            # results_google = fetch_google_search(query)
+            results_google = []
         except Exception as e:
             print("[google] Error:", e)
             results_google = []
